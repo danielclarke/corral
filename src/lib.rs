@@ -64,21 +64,7 @@ impl ImageCollection {
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let img_collection = load_all(&config.input_dir)?;
     let img_packed = pack(config.padding, &img_collection);
-
-    let buf = fs::File::create(&config.output_file)?;
-    let encoder = image::codecs::png::PngEncoder::new_with_quality(
-        buf,
-        image::codecs::png::CompressionType::Best,
-        image::codecs::png::FilterType::Adaptive,
-    );
-
-    encoder.write_image(
-        img_packed.as_bytes(),
-        img_packed.width(),
-        img_packed.height(),
-        img_packed.color(),
-    )?;
-
+    write_img(&config.output_file, &img_packed)?;
     Ok(())
 }
 
@@ -105,19 +91,37 @@ fn pack(padding: u8, img_collection: &ImageCollection) -> DynamicImage {
     let w =
         (img_collection.max_width + padding as u32) * img_collection.num_images + padding as u32;
 
-    let mut packed_img = image::RgbaImage::new(w, h);
+    let mut img_packed = image::RgbaImage::new(w, h);
 
     for (i, NamedDynamicImage { name: _, img }) in (img_collection.named_images).iter().enumerate()
     {
         image::imageops::replace(
-            &mut packed_img,
+            &mut img_packed,
             img,
             (i as i64) * (img_collection.max_width + padding as u32) as i64 + padding as i64,
             padding as i64,
         );
     }
 
-    DynamicImage::ImageRgba8(packed_img)
+    DynamicImage::ImageRgba8(img_packed)
+}
+
+fn write_img(output_file: &str, img_packed: &DynamicImage) -> Result<(), Box<dyn Error>> {
+    let buf = fs::File::create(&output_file)?;
+    let encoder = image::codecs::png::PngEncoder::new_with_quality(
+        buf,
+        image::codecs::png::CompressionType::Best,
+        image::codecs::png::FilterType::Adaptive,
+    );
+
+    encoder.write_image(
+        img_packed.as_bytes(),
+        img_packed.width(),
+        img_packed.height(),
+        img_packed.color(),
+    )?;
+
+    Ok(())
 }
 
 #[cfg(test)]
