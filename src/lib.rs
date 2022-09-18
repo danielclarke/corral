@@ -26,24 +26,34 @@ impl Config {
     }
 }
 
+struct NamedDynamicImage {
+    name: String,
+    img: DynamicImage,
+}
+
 struct ImageCollection {
-    images: Vec<DynamicImage>,
+    named_images: Vec<NamedDynamicImage>,
     max_width: u32,
     max_height: u32,
     num_images: u32,
 }
 
 impl ImageCollection {
-    fn new(images: Vec<DynamicImage>) -> ImageCollection {
+    fn new(mut named_images: Vec<NamedDynamicImage>) -> ImageCollection {
         let mut max_width = 0u32;
         let mut max_height = 0u32;
-        for im in &images {
-            max_width = max_width.max(im.width());
-            max_height = max_height.max(im.height());
+        for NamedDynamicImage { name: _, img } in &named_images {
+            max_width = max_width.max(img.width());
+            max_height = max_height.max(img.height());
         }
-        let num_images = (&images).len() as u32;
+        let num_images = (&named_images).len() as u32;
+
+        named_images.sort_by(|a, b| {
+            (b.img.width() * b.img.height()).cmp(&(a.img.width() * a.img.height()))
+        });
+
         ImageCollection {
-            images,
+            named_images,
             max_width,
             max_height,
             num_images,
@@ -54,14 +64,8 @@ impl ImageCollection {
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let img_collection = load_all(&config.input_dir)?;
     let img_packed = pack(config.padding, &img_collection);
+
     img_packed.save(config.output_file)?;
-
-    // for im in &(img_collection.images) {
-    //     println!("w {}, h {}", im.width(), im.height());
-    // }
-
-    // println!("Reading images from {}", config.input_dir);
-    // println!("Writing sprite sheet to {}", config.output_file);
 
     Ok(())
 }
@@ -73,8 +77,11 @@ fn load_all(input_dir: &str) -> Result<ImageCollection, Box<dyn Error>> {
 
     for path in paths {
         let path = path?.path();
-        if let Some(path_str) = path.to_str() {
-            images.push(image::io::Reader::open(path_str)?.decode()?);
+        if let (Some(path_str), Some(fname)) = (path.to_str(), path.file_name()) {
+            images.push(NamedDynamicImage {
+                name: fname.to_string_lossy().to_string(),
+                img: image::io::Reader::open(path_str)?.decode()?,
+            });
         }
     }
 
@@ -83,12 +90,13 @@ fn load_all(input_dir: &str) -> Result<ImageCollection, Box<dyn Error>> {
 
 fn pack(padding: u8, img_collection: &ImageCollection) -> DynamicImage {
     let h = img_collection.max_height + (padding * 2) as u32;
-    let w = (img_collection.max_width + padding as u32) * img_collection.num_images
-        + padding as u32;
+    let w =
+        (img_collection.max_width + padding as u32) * img_collection.num_images + padding as u32;
 
     let mut packed_img = image::RgbaImage::new(w, h);
 
-    for (i, img) in (img_collection.images).iter().enumerate() {
+    for (i, NamedDynamicImage { name: _, img }) in (img_collection.named_images).iter().enumerate()
+    {
         image::imageops::replace(
             &mut packed_img,
             img,
@@ -129,7 +137,10 @@ mod tests {
             }
         }
 
-        let img_collection = ImageCollection::new(vec![image::DynamicImage::ImageRgba8(img)]);
+        let img_collection = ImageCollection::new(vec![NamedDynamicImage {
+            name: "red_pixel".to_owned(),
+            img: image::DynamicImage::ImageRgba8(img),
+        }]);
 
         if let Some(img) = pack(padding as u8, &img_collection).as_rgba8() {
             let p: Vec<&image::Rgba<u8>> = img.pixels().collect();
