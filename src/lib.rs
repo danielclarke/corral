@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::fs;
 
-use image::DynamicImage;
+use image::{DynamicImage, ImageEncoder};
 
 pub struct Config {
     padding: u8,
@@ -65,7 +65,19 @@ pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let img_collection = load_all(&config.input_dir)?;
     let img_packed = pack(config.padding, &img_collection);
 
-    img_packed.save(config.output_file)?;
+    let buf = fs::File::create(&config.output_file)?;
+    let encoder = image::codecs::png::PngEncoder::new_with_quality(
+        buf,
+        image::codecs::png::CompressionType::Best,
+        image::codecs::png::FilterType::Adaptive,
+    );
+
+    encoder.write_image(
+        img_packed.as_bytes(),
+        img_packed.width(),
+        img_packed.height(),
+        img_packed.color(),
+    )?;
 
     Ok(())
 }
