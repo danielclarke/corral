@@ -1,6 +1,8 @@
 use std::env;
 use std::process;
 
+mod tree2d;
+
 use corral::{run, Config};
 
 fn main() {
