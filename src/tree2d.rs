@@ -47,33 +47,16 @@ pub enum Tree2d<T> {
 }
 
 impl<T> Tree2d<T> {
-    // fn new(data: Rc<T>, width: u32, height: u32) -> Self {
-    //     Tree2d::Node {
-    //         bb: BoundingBox {
-    //             x: 0,
-    //             y: 0,
-    //             width,
-    //             height,
-    //         },
-    //         right: Box::new(Self::Leaf {
-    //             bb: BoundingBox {
-    //                 x: width,
-    //                 y: 0,
-    //                 width: 0,
-    //                 height: 0,
-    //             },
-    //         }),
-    //         down: Box::new(Self::Leaf {
-    //             bb: BoundingBox {
-    //                 x: 0,
-    //                 y: height,
-    //                 width: 0,
-    //                 height: 0,
-    //             },
-    //         }),
-    //         data,
-    //     }
-    // }
+    fn new(width: u32, height: u32) -> Self {
+        Self::Leaf {
+            bb: BoundingBox {
+                x: 0,
+                y: 0,
+                width,
+                height,
+            },
+        }
+    }
 
     fn partition(data: Rc<T>, bb: BoundingBox, width: u32, height: u32) -> Self {
         let width_remainder = bb.width - width;
@@ -135,40 +118,38 @@ impl<T> Tree2d<T> {
 
     fn insert(&mut self, data: Rc<T>, width: u32, height: u32) -> bool {
         match self {
-            Self::Leaf { .. } => false,
+            Self::Leaf { bb } => {
+                if bb.can_contain(width, height) {
+                    *self = Self::partition(data, *bb, width, height);
+                    true
+                } else {
+                    false
+                }
+            }
             Self::Node {
-                bb,
-                right,
-                down,
-                data: _,
+                bb, right, down, ..
             } => {
                 if bb.can_contain(width, height) {
                     match (&**right, &**down) {
-                        (Self::Leaf { bb: bb_right }, Self::Leaf { bb: bb_down }) => {
-                            if bb_right.can_contain(width, height) {
-                                *right = Box::new(Self::partition(data, *bb_right, width, height));
-                                true
-                            } else if bb_down.can_contain(width, height) {
-                                *down = Box::new(Self::partition(data, *bb_down, width, height));
+                        (Self::Leaf { .. }, Self::Leaf { .. }) => {
+                            if right.insert(Rc::clone(&data), width, height) {
                                 true
                             } else {
-                                false
+                                down.insert(Rc::clone(&data), width, height)
                             }
                         }
-                        (Self::Leaf { bb: bb_right }, Self::Node { .. }) => {
-                            if bb_right.can_contain(width, height) {
-                                *right = Box::new(Self::partition(data, *bb_right, width, height));
+                        (Self::Leaf { .. }, Self::Node { .. }) => {
+                            if right.insert(Rc::clone(&data), width, height) {
                                 true
                             } else {
-                                down.insert(data, width, height)
+                                down.insert(Rc::clone(&data), width, height)
                             }
                         }
-                        (Self::Node { .. }, Self::Leaf { bb: bb_down }) => {
-                            if bb_down.can_contain(width, height) {
-                                *down = Box::new(Self::partition(data, *bb_down, width, height));
+                        (Self::Node { .. }, Self::Leaf { .. }) => {
+                            if down.insert(Rc::clone(&data), width, height) {
                                 true
                             } else {
-                                right.insert(data, width, height)
+                                right.insert(Rc::clone(&data), width, height)
                             }
                         }
                         (Self::Node { .. }, Self::Node { .. }) => {
@@ -365,7 +346,7 @@ mod tree_2d_tests {
     use super::*;
 
     #[test]
-    fn new_tree() {
+    fn partition() {
         let data = Rc::new(1u32);
         let width = 2u32;
         let height = 2u32;
@@ -381,6 +362,55 @@ mod tree_2d_tests {
             width,
             height,
         );
+
+        let expected_bb_right = BoundingBox {
+            x: 2,
+            y: 0,
+            width: 2,
+            height: 4,
+        };
+
+        let expected_bb_down = BoundingBox {
+            x: 0,
+            y: 2,
+            width: 2,
+            height: 2,
+        };
+
+        match tree {
+            Tree2d::Leaf { .. } => {
+                assert!(false, "root should be a node")
+            }
+            Tree2d::Node { right, down, .. } => {
+                match *right {
+                    Tree2d::Leaf { bb } => {
+                        assert_eq!(expected_bb_right, bb);
+                    }
+                    Tree2d::Node { .. } => {
+                        assert!(false, "right remainder should be a leaf")
+                    }
+                };
+                match *down {
+                    Tree2d::Leaf { bb } => {
+                        assert_eq!(expected_bb_down, bb);
+                    }
+                    Tree2d::Node { .. } => {
+                        assert!(false, "down remainder should be a leaf")
+                    }
+                };
+            }
+        }
+    }
+
+    #[test]
+    fn new_tree() {
+        let data = Rc::new(1u32);
+        let width = 4u32;
+        let height = 4u32;
+
+        let mut tree = Tree2d::<u32>::new(width, height);
+
+        tree.insert(data, 2u32, 2u32);
 
         let expected_bb_right = BoundingBox {
             x: 2,
