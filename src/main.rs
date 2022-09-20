@@ -1,9 +1,10 @@
 use std::env;
 use std::process;
 
+mod packer;
 mod tree2d;
 
-use corral::{run, Config};
+use packer::{run, Config};
 
 fn main() {
     let args: Vec<String> = env::args().collect();

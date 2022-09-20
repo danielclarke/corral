@@ -2,10 +2,10 @@ use std::rc::Rc;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct BoundingBox {
-    x: u32,
-    y: u32,
-    width: u32,
-    height: u32,
+    pub x: u32,
+    pub y: u32,
+    pub width: u32,
+    pub height: u32,
 }
 
 impl BoundingBox {
@@ -14,7 +14,7 @@ impl BoundingBox {
     }
 
     fn can_contain(&self, width: u32, height: u32) -> bool {
-        width < self.width && height < self.height
+        width <= self.width && height <= self.height
     }
 
     fn same_shape(&self, width: u32, height: u32) -> bool {
@@ -47,7 +47,7 @@ pub enum Tree2d<T> {
 }
 
 impl<T> Tree2d<T> {
-    fn new(width: u32, height: u32) -> Self {
+    pub fn new(width: u32, height: u32) -> Self {
         Self::Leaf {
             bb: BoundingBox {
                 x: 0,
@@ -116,7 +116,7 @@ impl<T> Tree2d<T> {
         }
     }
 
-    fn insert(&mut self, data: Rc<T>, width: u32, height: u32) -> bool {
+    pub fn insert(&mut self, width: u32, height: u32, data: Rc<T>) -> bool {
         match self {
             Self::Leaf { bb } => {
                 if bb.can_contain(width, height) {
@@ -132,37 +132,65 @@ impl<T> Tree2d<T> {
                 if bb.can_contain(width, height) {
                     match (&**right, &**down) {
                         (Self::Leaf { .. }, Self::Leaf { .. }) => {
-                            if right.insert(Rc::clone(&data), width, height) {
+                            if right.insert(width, height, Rc::clone(&data)) {
                                 true
                             } else {
-                                down.insert(Rc::clone(&data), width, height)
+                                down.insert(width, height, Rc::clone(&data))
                             }
                         }
                         (Self::Leaf { .. }, Self::Node { .. }) => {
-                            if right.insert(Rc::clone(&data), width, height) {
+                            if right.insert(width, height, Rc::clone(&data)) {
                                 true
                             } else {
-                                down.insert(Rc::clone(&data), width, height)
+                                down.insert(width, height, Rc::clone(&data))
                             }
                         }
                         (Self::Node { .. }, Self::Leaf { .. }) => {
-                            if down.insert(Rc::clone(&data), width, height) {
+                            if down.insert(width, height, Rc::clone(&data)) {
                                 true
                             } else {
-                                right.insert(Rc::clone(&data), width, height)
+                                right.insert(width, height, Rc::clone(&data))
                             }
                         }
                         (Self::Node { .. }, Self::Node { .. }) => {
-                            if right.insert(Rc::clone(&data), width, height) {
+                            if right.insert(width, height, Rc::clone(&data)) {
                                 true
                             } else {
-                                down.insert(Rc::clone(&data), width, height)
+                                down.insert(width, height, Rc::clone(&data))
                             }
                         }
                     }
                 } else {
                     false
                 }
+            }
+        }
+    }
+
+    pub fn flatten(&self) -> Vec<(Rc<T>, BoundingBox)> {
+        let mut output: Vec<(Rc<T>, BoundingBox)> = vec![];
+
+        self.flatten_aux(&mut output);
+
+        output
+    }
+
+    fn flatten_aux<'a>(
+        &self,
+        output: &'a mut Vec<(Rc<T>, BoundingBox)>,
+    ) -> &'a mut Vec<(Rc<T>, BoundingBox)> {
+        match self {
+            Self::Leaf { .. } => output,
+            Self::Node {
+                bb,
+                right,
+                down,
+                data,
+            } => {
+                output.push((Rc::clone(data), *bb));
+                right.flatten_aux(output);
+                down.flatten_aux(output);
+                output
             }
         }
     }
@@ -410,7 +438,7 @@ mod tree_2d_tests {
 
         let mut tree = Tree2d::<u32>::new(width, height);
 
-        tree.insert(data, 2u32, 2u32);
+        tree.insert(2u32, 2u32, data);
 
         let expected_bb_right = BoundingBox {
             x: 2,

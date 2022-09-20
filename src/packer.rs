@@ -1,6 +1,8 @@
 use std::error::Error;
 use std::fs;
+use std::rc::Rc;
 
+use crate::tree2d::Tree2d;
 use image::{DynamicImage, ImageEncoder};
 
 pub struct Config {
@@ -63,7 +65,7 @@ impl ImageCollection {
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let img_collection = load_all(&config.input_dir)?;
-    let img_packed = pack(config.padding, &img_collection);
+    let img_packed = pack(config.padding, img_collection);
     write_img(&config.output_file, &img_packed)?;
     Ok(())
 }
@@ -86,21 +88,22 @@ fn load_all(input_dir: &str) -> Result<ImageCollection, Box<dyn Error>> {
     Ok(ImageCollection::new(images))
 }
 
-fn pack(padding: u8, img_collection: &ImageCollection) -> DynamicImage {
-    let h = img_collection.max_height + (padding * 2) as u32;
-    let w =
-        (img_collection.max_width + padding as u32) * img_collection.num_images + padding as u32;
+fn pack(padding: u8, img_collection: ImageCollection) -> DynamicImage {
+    let height = 64 + 32;
+    // (img_collection.max_height + padding as u32) * img_collection.num_images + padding as u32;
+    let width = 64;
+    // (img_collection.max_width + padding as u32) * img_collection.num_images + padding as u32;
 
-    let mut img_packed = image::RgbaImage::new(w, h);
+    let mut tree = Tree2d::<&DynamicImage>::new(width, height);
 
-    for (i, NamedDynamicImage { name: _, img }) in (img_collection.named_images).iter().enumerate()
-    {
-        image::imageops::replace(
-            &mut img_packed,
-            img,
-            (i as i64) * (img_collection.max_width + padding as u32) as i64 + padding as i64,
-            padding as i64,
-        );
+    let mut img_packed = image::RgbaImage::new(width, height);
+
+    for NamedDynamicImage { img, .. } in img_collection.named_images.iter() {
+        tree.insert(img.width(), img.height(), Rc::new(&img));
+    }
+    let flattened = tree.flatten();
+    for (img, bb) in flattened {
+        image::imageops::replace(&mut img_packed, *img, bb.x as i64, bb.y as i64);
     }
 
     DynamicImage::ImageRgba8(img_packed)
@@ -158,7 +161,7 @@ mod tests {
             img: image::DynamicImage::ImageRgba8(img),
         }]);
 
-        if let Some(img) = pack(padding as u8, &img_collection).as_rgba8() {
+        if let Some(img) = pack(padding as u8, img_collection).as_rgba8() {
             let p: Vec<&image::Rgba<u8>> = img.pixels().collect();
             let q: Vec<&image::Rgba<u8>> = expected_output_img.pixels().collect();
             assert_eq!(q, p);
