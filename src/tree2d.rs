@@ -58,6 +58,18 @@ impl<T> Tree2d<T> {
         }
     }
 
+    pub fn insert(&mut self, width: u32, height: u32, data: T) -> bool {
+        self.insert_aux(width, height, Rc::new(data))
+    }
+
+    pub fn flatten(&self) -> Vec<(Rc<T>, BoundingBox)> {
+        let mut output: Vec<(Rc<T>, BoundingBox)> = vec![];
+
+        self.flatten_aux(&mut output);
+
+        output
+    }
+
     fn partition(data: Rc<T>, bb: BoundingBox, width: u32, height: u32) -> Self {
         let width_remainder = bb.width - width;
         let height_remainder = bb.height - height;
@@ -116,10 +128,6 @@ impl<T> Tree2d<T> {
         }
     }
 
-    pub fn insert(&mut self, width: u32, height: u32, data: T) -> bool {
-        self.insert_aux(width, height, Rc::new(data))
-    }
-
     fn insert_aux(&mut self, width: u32, height: u32, data: Rc<T>) -> bool {
         match self {
             Self::Leaf { bb } => {
@@ -169,14 +177,6 @@ impl<T> Tree2d<T> {
                 }
             }
         }
-    }
-
-    pub fn flatten(&self) -> Vec<(Rc<T>, BoundingBox)> {
-        let mut output: Vec<(Rc<T>, BoundingBox)> = vec![];
-
-        self.flatten_aux(&mut output);
-
-        output
     }
 
     fn flatten_aux<'a>(
