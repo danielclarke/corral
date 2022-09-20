@@ -116,7 +116,11 @@ impl<T> Tree2d<T> {
         }
     }
 
-    pub fn insert(&mut self, width: u32, height: u32, data: Rc<T>) -> bool {
+    pub fn insert(&mut self, width: u32, height: u32, data: T) -> bool {
+        self.insert_aux(width, height, Rc::new(data))
+    }
+
+    fn insert_aux(&mut self, width: u32, height: u32, data: Rc<T>) -> bool {
         match self {
             Self::Leaf { bb } => {
                 if bb.can_contain(width, height) {
@@ -132,31 +136,31 @@ impl<T> Tree2d<T> {
                 if bb.can_contain(width, height) {
                     match (&**right, &**down) {
                         (Self::Leaf { .. }, Self::Leaf { .. }) => {
-                            if right.insert(width, height, Rc::clone(&data)) {
+                            if right.insert_aux(width, height, Rc::clone(&data)) {
                                 true
                             } else {
-                                down.insert(width, height, Rc::clone(&data))
+                                down.insert_aux(width, height, Rc::clone(&data))
                             }
                         }
                         (Self::Leaf { .. }, Self::Node { .. }) => {
-                            if right.insert(width, height, Rc::clone(&data)) {
+                            if right.insert_aux(width, height, Rc::clone(&data)) {
                                 true
                             } else {
-                                down.insert(width, height, Rc::clone(&data))
+                                down.insert_aux(width, height, Rc::clone(&data))
                             }
                         }
                         (Self::Node { .. }, Self::Leaf { .. }) => {
-                            if down.insert(width, height, Rc::clone(&data)) {
+                            if down.insert_aux(width, height, Rc::clone(&data)) {
                                 true
                             } else {
-                                right.insert(width, height, Rc::clone(&data))
+                                right.insert_aux(width, height, Rc::clone(&data))
                             }
                         }
                         (Self::Node { .. }, Self::Node { .. }) => {
-                            if right.insert(width, height, Rc::clone(&data)) {
+                            if right.insert_aux(width, height, Rc::clone(&data)) {
                                 true
                             } else {
-                                down.insert(width, height, Rc::clone(&data))
+                                down.insert_aux(width, height, Rc::clone(&data))
                             }
                         }
                     }
@@ -432,7 +436,7 @@ mod tree_2d_tests {
 
     #[test]
     fn new_tree() {
-        let data = Rc::new(1u32);
+        let data = 1u32;
         let width = 4u32;
         let height = 4u32;
 

@@ -1,6 +1,5 @@
 use std::error::Error;
 use std::fs;
-use std::rc::Rc;
 
 use crate::tree2d::Tree2d;
 use image::{DynamicImage, ImageEncoder};
@@ -99,7 +98,7 @@ fn pack(padding: u8, img_collection: ImageCollection) -> DynamicImage {
     let mut img_packed = image::RgbaImage::new(width, height);
 
     for NamedDynamicImage { img, .. } in img_collection.named_images.iter() {
-        tree.insert(img.width(), img.height(), Rc::new(&img));
+        tree.insert(img.width(), img.height(), &img);
     }
     let flattened = tree.flatten();
     for (img, bb) in flattened {
