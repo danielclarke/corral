@@ -1,3 +1,4 @@
+use std::cmp::Ordering;
 use std::rc::Rc;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -9,8 +10,12 @@ pub struct BoundingBox {
 }
 
 impl BoundingBox {
-    fn size(&self) -> u32 {
+    fn area(&self) -> u32 {
         self.width * self.height
+    }
+
+    fn perimeter(&self) -> u32 {
+        self.width * 2 + self.height * 2
     }
 
     fn can_contain(&self, width: u32, height: u32) -> bool {
@@ -31,6 +36,22 @@ impl std::ops::Add<&BoundingBox> for &BoundingBox {
             width: (self.x + self.width).max(v.x + v.width) - self.x.min(v.x),
             height: (self.y + self.height).max(v.y + v.height) - self.y.min(v.y),
         }
+    }
+}
+
+impl Ord for BoundingBox {
+    fn cmp(&self, other: &Self) -> Ordering {
+        match self.area().cmp(&other.area()) {
+            Ordering::Equal => self.perimeter().cmp(&other.perimeter()),
+            Ordering::Greater => Ordering::Greater,
+            Ordering::Less => Ordering::Less,
+        }
+    }
+}
+
+impl PartialOrd for BoundingBox {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
     }
 }
 
@@ -128,6 +149,28 @@ impl<T> Tree2d<T> {
         }
     }
 
+    // fn get_smallest_leaf_for_data(
+    //     &mut self,
+    //     width: u32,
+    //     height: u32,
+    // ) -> Option<(&mut Self, BoundingBox)> {
+    //     match self {
+    //         Self::Leaf { bb } => {
+    //             if bb.can_contain(width, height) {
+    //                 None
+    //             } else {
+    //                 None
+    //             }
+    //         }
+    //         Self::Node {
+    //             bb,
+    //             right,
+    //             down,
+    //             data,
+    //         } => Some((right, *bb)),
+    //     }
+    // }
+
     fn insert_aux(&mut self, width: u32, height: u32, data: Rc<T>) -> bool {
         match self {
             Self::Leaf { bb } => {
@@ -200,178 +243,178 @@ impl<T> Tree2d<T> {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
 
-    #[test]
-    fn bb_horizontal_add() {
-        let bb1 = BoundingBox {
-            x: 0,
-            y: 0,
-            width: 1,
-            height: 1,
-        };
-        let bb2 = BoundingBox {
-            x: 1,
-            y: 0,
-            width: 1,
-            height: 1,
-        };
-        let expected_output = BoundingBox {
-            x: 0,
-            y: 0,
-            width: 2,
-            height: 1,
-        };
-        assert_eq!(expected_output, &bb1 + &bb2);
-        assert_eq!(expected_output, &bb2 + &bb1);
-    }
+//     #[test]
+//     fn bb_horizontal_add() {
+//         let bb1 = BoundingBox {
+//             x: 0,
+//             y: 0,
+//             width: 1,
+//             height: 1,
+//         };
+//         let bb2 = BoundingBox {
+//             x: 1,
+//             y: 0,
+//             width: 1,
+//             height: 1,
+//         };
+//         let expected_output = BoundingBox {
+//             x: 0,
+//             y: 0,
+//             width: 2,
+//             height: 1,
+//         };
+//         assert_eq!(expected_output, &bb1 + &bb2);
+//         assert_eq!(expected_output, &bb2 + &bb1);
+//     }
 
-    #[test]
-    fn bb_horizontal_overlap_add() {
-        let bb1 = BoundingBox {
-            x: 0,
-            y: 0,
-            width: 2,
-            height: 1,
-        };
-        let bb2 = BoundingBox {
-            x: 1,
-            y: 0,
-            width: 2,
-            height: 1,
-        };
-        let expected_output = BoundingBox {
-            x: 0,
-            y: 0,
-            width: 3,
-            height: 1,
-        };
-        assert_eq!(expected_output, &bb1 + &bb2);
-        assert_eq!(expected_output, &bb2 + &bb1);
-    }
+//     #[test]
+//     fn bb_horizontal_overlap_add() {
+//         let bb1 = BoundingBox {
+//             x: 0,
+//             y: 0,
+//             width: 2,
+//             height: 1,
+//         };
+//         let bb2 = BoundingBox {
+//             x: 1,
+//             y: 0,
+//             width: 2,
+//             height: 1,
+//         };
+//         let expected_output = BoundingBox {
+//             x: 0,
+//             y: 0,
+//             width: 3,
+//             height: 1,
+//         };
+//         assert_eq!(expected_output, &bb1 + &bb2);
+//         assert_eq!(expected_output, &bb2 + &bb1);
+//     }
 
-    #[test]
-    fn bb_vertival_add() {
-        let bb1 = BoundingBox {
-            x: 0,
-            y: 0,
-            width: 1,
-            height: 1,
-        };
-        let bb2 = BoundingBox {
-            x: 0,
-            y: 1,
-            width: 1,
-            height: 1,
-        };
-        let expected_output = BoundingBox {
-            x: 0,
-            y: 0,
-            width: 1,
-            height: 2,
-        };
-        assert_eq!(expected_output, &bb1 + &bb2);
-        assert_eq!(expected_output, &bb2 + &bb1);
-    }
+//     #[test]
+//     fn bb_vertival_add() {
+//         let bb1 = BoundingBox {
+//             x: 0,
+//             y: 0,
+//             width: 1,
+//             height: 1,
+//         };
+//         let bb2 = BoundingBox {
+//             x: 0,
+//             y: 1,
+//             width: 1,
+//             height: 1,
+//         };
+//         let expected_output = BoundingBox {
+//             x: 0,
+//             y: 0,
+//             width: 1,
+//             height: 2,
+//         };
+//         assert_eq!(expected_output, &bb1 + &bb2);
+//         assert_eq!(expected_output, &bb2 + &bb1);
+//     }
 
-    #[test]
-    fn bb_vertival_overlap_add() {
-        let bb1 = BoundingBox {
-            x: 0,
-            y: 0,
-            width: 1,
-            height: 2,
-        };
-        let bb2 = BoundingBox {
-            x: 0,
-            y: 1,
-            width: 1,
-            height: 2,
-        };
-        let expected_output = BoundingBox {
-            x: 0,
-            y: 0,
-            width: 1,
-            height: 3,
-        };
-        assert_eq!(expected_output, &bb1 + &bb2);
-        assert_eq!(expected_output, &bb2 + &bb1);
-    }
+//     #[test]
+//     fn bb_vertival_overlap_add() {
+//         let bb1 = BoundingBox {
+//             x: 0,
+//             y: 0,
+//             width: 1,
+//             height: 2,
+//         };
+//         let bb2 = BoundingBox {
+//             x: 0,
+//             y: 1,
+//             width: 1,
+//             height: 2,
+//         };
+//         let expected_output = BoundingBox {
+//             x: 0,
+//             y: 0,
+//             width: 1,
+//             height: 3,
+//         };
+//         assert_eq!(expected_output, &bb1 + &bb2);
+//         assert_eq!(expected_output, &bb2 + &bb1);
+//     }
 
-    #[test]
-    fn bb_diagonal_add() {
-        let bb1 = BoundingBox {
-            x: 0,
-            y: 0,
-            width: 1,
-            height: 1,
-        };
-        let bb2 = BoundingBox {
-            x: 1,
-            y: 1,
-            width: 1,
-            height: 1,
-        };
-        let expected_output = BoundingBox {
-            x: 0,
-            y: 0,
-            width: 2,
-            height: 2,
-        };
-        assert_eq!(expected_output, &bb1 + &bb2);
-        assert_eq!(expected_output, &bb2 + &bb1);
-    }
+//     #[test]
+//     fn bb_diagonal_add() {
+//         let bb1 = BoundingBox {
+//             x: 0,
+//             y: 0,
+//             width: 1,
+//             height: 1,
+//         };
+//         let bb2 = BoundingBox {
+//             x: 1,
+//             y: 1,
+//             width: 1,
+//             height: 1,
+//         };
+//         let expected_output = BoundingBox {
+//             x: 0,
+//             y: 0,
+//             width: 2,
+//             height: 2,
+//         };
+//         assert_eq!(expected_output, &bb1 + &bb2);
+//         assert_eq!(expected_output, &bb2 + &bb1);
+//     }
 
-    #[test]
-    fn bb_diagonal_overlap_add() {
-        let bb1 = BoundingBox {
-            x: 0,
-            y: 0,
-            width: 2,
-            height: 2,
-        };
-        let bb2 = BoundingBox {
-            x: 1,
-            y: 1,
-            width: 2,
-            height: 2,
-        };
-        let expected_output = BoundingBox {
-            x: 0,
-            y: 0,
-            width: 3,
-            height: 3,
-        };
-        assert_eq!(expected_output, &bb1 + &bb2);
-        assert_eq!(expected_output, &bb2 + &bb1);
-    }
+//     #[test]
+//     fn bb_diagonal_overlap_add() {
+//         let bb1 = BoundingBox {
+//             x: 0,
+//             y: 0,
+//             width: 2,
+//             height: 2,
+//         };
+//         let bb2 = BoundingBox {
+//             x: 1,
+//             y: 1,
+//             width: 2,
+//             height: 2,
+//         };
+//         let expected_output = BoundingBox {
+//             x: 0,
+//             y: 0,
+//             width: 3,
+//             height: 3,
+//         };
+//         assert_eq!(expected_output, &bb1 + &bb2);
+//         assert_eq!(expected_output, &bb2 + &bb1);
+//     }
 
-    #[test]
-    fn bb_diagonal_disjoint_add() {
-        let bb1 = BoundingBox {
-            x: 0,
-            y: 0,
-            width: 1,
-            height: 1,
-        };
-        let bb2 = BoundingBox {
-            x: 2,
-            y: 2,
-            width: 1,
-            height: 1,
-        };
-        let expected_output = BoundingBox {
-            x: 0,
-            y: 0,
-            width: 3,
-            height: 3,
-        };
-        assert_eq!(expected_output, &bb1 + &bb2);
-        assert_eq!(expected_output, &bb2 + &bb1);
-    }
-}
+//     #[test]
+//     fn bb_diagonal_disjoint_add() {
+//         let bb1 = BoundingBox {
+//             x: 0,
+//             y: 0,
+//             width: 1,
+//             height: 1,
+//         };
+//         let bb2 = BoundingBox {
+//             x: 2,
+//             y: 2,
+//             width: 1,
+//             height: 1,
+//         };
+//         let expected_output = BoundingBox {
+//             x: 0,
+//             y: 0,
+//             width: 3,
+//             height: 3,
+//         };
+//         assert_eq!(expected_output, &bb1 + &bb2);
+//         assert_eq!(expected_output, &bb2 + &bb1);
+//     }
+// }
 
 #[cfg(test)]
 mod tree_2d_tests {

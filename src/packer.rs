@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::fs;
 
-use crate::tree2d::Tree2d;
+use crate::tree2d2::Tree2d;
 use image::{DynamicImage, ImageEncoder};
 
 pub struct Config {
@@ -90,19 +90,30 @@ fn load_all(input_dir: &str) -> Result<ImageCollection, Box<dyn Error>> {
 fn pack(padding: u8, img_collection: ImageCollection) -> DynamicImage {
     // let height = 96 + 3 * padding as u32;
     // let width = 64 + 2 * padding as u32;
-    let height = (img_collection.max_height + padding as u32) * img_collection.num_images + padding as u32;
-    let width = (img_collection.max_width + padding as u32) * img_collection.num_images + padding as u32;
+    let height =
+        (img_collection.max_height + padding as u32) * img_collection.num_images + padding as u32;
+    let width =
+        (img_collection.max_width + padding as u32) * img_collection.num_images + padding as u32;
 
     let mut tree = Tree2d::<&DynamicImage>::new(width, height);
 
     let mut img_packed = image::RgbaImage::new(width, height);
 
     for NamedDynamicImage { img, .. } in img_collection.named_images.iter() {
-        tree.insert(img.width() + padding as u32, img.height() + padding as u32, &img);
+        tree.insert(
+            img.width() + padding as u32,
+            img.height() + padding as u32,
+            img,
+        );
     }
     let flattened = tree.flatten();
     for (img, bb) in flattened {
-        image::imageops::replace(&mut img_packed, *img, bb.x as i64 + padding as i64, bb.y as i64 + padding as i64);
+        image::imageops::replace(
+            &mut img_packed,
+            *img,
+            bb.x as i64 + padding as i64,
+            bb.y as i64 + padding as i64,
+        );
     }
 
     DynamicImage::ImageRgba8(img_packed)

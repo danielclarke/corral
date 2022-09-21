@@ -3,6 +3,7 @@ use std::process;
 
 mod packer;
 mod tree2d;
+mod tree2d2;
 
 use packer::{run, Config};
 
