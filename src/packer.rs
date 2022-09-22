@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::fs;
 
-use crate::tree2d::Tree2d;
+use crate::tree2d::{DataSize, Tree2d};
 use image::{DynamicImage, ImageEncoder};
 
 pub struct Config {
@@ -64,7 +64,7 @@ impl ImageCollection {
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let img_collection = load_all(&config.input_dir)?;
-    let img_packed = pack(config.padding, img_collection);
+    let img_packed = pack(config.padding, img_collection)?;
     write_img(&config.output_file, &img_packed)?;
     Ok(())
 }
@@ -87,23 +87,24 @@ fn load_all(input_dir: &str) -> Result<ImageCollection, Box<dyn Error>> {
     Ok(ImageCollection::new(images))
 }
 
-fn pack(padding: u8, img_collection: ImageCollection) -> DynamicImage {
-    // let height = 96 + 3 * padding as u32;
-    // let width = 64 + 2 * padding as u32;
-    let height =
-        (img_collection.max_height + padding as u32) * img_collection.num_images + padding as u32;
-    let width =
-        (img_collection.max_width + padding as u32) * img_collection.num_images + padding as u32;
+fn pack(padding: u8, img_collection: ImageCollection) -> Result<DynamicImage, Box<dyn Error>> {
+    // let height =
+    //     (img_collection.max_height + padding as u32) * img_collection.num_images + padding as u32;
+    // let width =
+    //     (img_collection.max_width + padding as u32) * img_collection.num_images + padding as u32;
 
-    let mut tree = Tree2d::<&DynamicImage>::new(width, height);
-
+    let mut data = vec![];
     for NamedDynamicImage { img, .. } in img_collection.named_images.iter() {
-        tree.insert(
-            img.width() + padding as u32,
-            img.height() + padding as u32,
+        data.push((
+            DataSize {
+                width: img.width() + padding as u32,
+                height: img.height() + padding as u32,
+            },
             img,
-        );
+        ));
     }
+    let mut tree = Tree2d::<&DynamicImage>::new();
+    tree.insert_all(data)?;
     let flattened = tree.flatten();
     let bb = tree.get_total_bounding_box();
     let mut img_packed =
@@ -117,7 +118,7 @@ fn pack(padding: u8, img_collection: ImageCollection) -> DynamicImage {
         );
     }
 
-    DynamicImage::ImageRgba8(img_packed)
+    Ok(DynamicImage::ImageRgba8(img_packed))
 }
 
 fn write_img(output_file: &str, img_packed: &DynamicImage) -> Result<(), Box<dyn Error>> {
@@ -153,7 +154,7 @@ mod tests {
     }
 
     #[test]
-    fn pack_one() {
+    fn pack_one() -> Result<(), Box<dyn Error>> {
         let (w, h) = (1, 1);
         let padding = 1;
         let mut expected_output_img = image::RgbaImage::new(w + padding * 2, h + padding * 2);
@@ -175,15 +176,16 @@ mod tests {
             img: make_rect(w, h),
         }]);
 
-        if let Some(img) = pack(padding as u8, img_collection).as_rgba8() {
+        if let Some(img) = pack(padding as u8, img_collection)?.as_rgba8() {
             let p: Vec<&image::Rgba<u8>> = img.pixels().collect();
             let q: Vec<&image::Rgba<u8>> = expected_output_img.pixels().collect();
             assert_eq!(q, p);
         }
+        Ok(())
     }
 
     #[test]
-    fn pack_many() {
+    fn pack_many() -> Result<(), Box<dyn Error>> {
         let dims = vec![
             (128, 96),
             (96, 128),
@@ -292,7 +294,8 @@ mod tests {
             })
         }
         let img_collection = ImageCollection::new(imgs);
-        let img_packed = pack(2, img_collection);
+        let img_packed = pack(2, img_collection)?;
         let _ = write_img("many.png", &img_packed);
+        Ok(())
     }
 }

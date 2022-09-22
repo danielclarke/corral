@@ -1,6 +1,27 @@
+use std::error::Error;
 use std::rc::Rc;
 
 use crate::bounding_box::BoundingBox;
+
+pub struct DataSize {
+    pub width: u32,
+    pub height: u32,
+}
+
+#[derive(Clone, Debug)]
+pub struct PlacementError {}
+
+impl Error for PlacementError {
+    fn description(&self) -> &str {
+        "error placing data"
+    }
+}
+
+impl std::fmt::Display for PlacementError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        write!(f, "{}", 1)
+    }
+}
 
 struct Node<T> {
     right: Tree2d<T>,
@@ -14,28 +35,35 @@ pub struct Tree2d<T> {
 }
 
 impl<T> Tree2d<T> {
-    pub fn new(width: u32, height: u32) -> Self {
+    pub fn new() -> Self {
         Self {
             bb: BoundingBox {
                 x: 0,
                 y: 0,
-                width,
-                height,
+                width: u32::MAX,
+                height: u32::MAX,
             },
             node: None,
         }
     }
 
-    pub fn insert(&mut self, width: u32, height: u32, data: T) -> bool {
+    pub fn insert(&mut self, width: u32, height: u32, data: T) -> Result<(), Box<dyn Error>> {
         let total_bb = self.get_total_bounding_box();
         let opleaf = self.get_smallest_leaf_for_data(total_bb, width, height);
         match opleaf {
-            None => false,
+            None => Err(Box::new(PlacementError {})),
             Some((leaf, _)) => {
                 *leaf = Self::partition(Rc::new(data), leaf.bb, width, height);
-                true
+                Ok(())
             }
         }
+    }
+
+    pub fn insert_all(&mut self, data: Vec<(DataSize, T)>) -> Result<(), Box<dyn Error>> {
+        for (DataSize { width, height }, data) in data {
+            self.insert(width, height, data)?;
+        }
+        Ok(())
     }
 
     pub fn flatten(&self) -> Vec<(Rc<T>, BoundingBox)> {
@@ -214,27 +242,25 @@ mod tree_2d_tests {
     use super::*;
 
     #[test]
-    fn new_tree() {
+    fn new_tree() -> Result<(), Box<dyn Error>> {
         let data = 1u32;
-        let width = 4u32;
-        let height = 4u32;
 
-        let mut tree = Tree2d::<u32>::new(width, height);
+        let mut tree = Tree2d::<u32>::new();
 
-        tree.insert(2u32, 2u32, data);
+        tree.insert(2u32, 2u32, data)?;
 
         let expected_bb_right = BoundingBox {
             x: 2,
             y: 0,
-            width: 2,
-            height: 4,
+            width: u32::MAX - 2,
+            height: u32::MAX,
         };
 
         let expected_bb_down = BoundingBox {
             x: 0,
             y: 2,
             width: 2,
-            height: 2,
+            height: u32::MAX - 2,
         };
 
         match tree.node {
@@ -244,5 +270,6 @@ mod tree_2d_tests {
                 assert_eq!(expected_bb_down, node.down.bb);
             }
         }
+        Ok(())
     }
 }
