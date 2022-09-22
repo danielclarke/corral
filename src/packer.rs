@@ -97,8 +97,6 @@ fn pack(padding: u8, img_collection: ImageCollection) -> DynamicImage {
 
     let mut tree = Tree2d::<&DynamicImage>::new(width, height);
 
-    let mut img_packed = image::RgbaImage::new(width, height);
-
     for NamedDynamicImage { img, .. } in img_collection.named_images.iter() {
         tree.insert(
             img.width() + padding as u32,
@@ -107,6 +105,8 @@ fn pack(padding: u8, img_collection: ImageCollection) -> DynamicImage {
         );
     }
     let flattened = tree.flatten();
+    let bb = tree.get_total_bounding_box();
+    let mut img_packed = image::RgbaImage::new(bb.width + padding as u32, bb.height + padding as u32);
     for (img, bb) in flattened {
         image::imageops::replace(
             &mut img_packed,
@@ -141,16 +141,19 @@ fn write_img(output_file: &str, img_packed: &DynamicImage) -> Result<(), Box<dyn
 mod tests {
     use super::*;
 
-    #[test]
-    fn pack_one() {
-        let (w, h) = (1, 1);
+    fn make_rect(w: u32, h: u32) -> image::DynamicImage {
         let mut img = image::RgbaImage::new(w, h);
         for i in 0..w {
             for j in 0..h {
                 img.put_pixel(i, j, image::Rgba([255, 0, 0, 255]));
             }
         }
+        image::DynamicImage::ImageRgba8(img)
+    }
 
+    #[test]
+    fn pack_one() {
+        let (w, h) = (1, 1);
         let padding = 1;
         let mut expected_output_img = image::RgbaImage::new(w + padding * 2, h + padding * 2);
         for i in 0..w + padding * 2 {
@@ -168,7 +171,7 @@ mod tests {
 
         let img_collection = ImageCollection::new(vec![NamedDynamicImage {
             name: "red_pixel".to_owned(),
-            img: image::DynamicImage::ImageRgba8(img),
+            img: make_rect(w, h),
         }]);
 
         if let Some(img) = pack(padding as u8, img_collection).as_rgba8() {
@@ -176,5 +179,119 @@ mod tests {
             let q: Vec<&image::Rgba<u8>> = expected_output_img.pixels().collect();
             assert_eq!(q, p);
         }
+    }
+
+    #[test]
+    fn pack_many() {
+        let dims = vec![
+            (128, 96),
+            (96, 128),
+            (64, 96),
+            (96, 64),
+            (64, 64),
+            (96, 96),
+            (256, 64),
+            (32, 32),
+            (32, 32),
+            (32, 32),
+            (32, 32),
+            (42, 42),
+            (42, 42),
+            (42, 42),
+            (42, 42),
+            (42, 42),
+            (42, 42),
+            (128, 96),
+            (96, 128),
+            (64, 96),
+            (96, 64),
+            (64, 64),
+            (96, 96),
+            (256, 64),
+            (32, 32),
+            (32, 32),
+            (32, 32),
+            (32, 32),
+            (42, 42),
+            (42, 42),
+            (42, 42),
+            (42, 42),
+            (42, 42),
+            (42, 42),
+            (128, 96),
+            (96, 128),
+            (64, 96),
+            (96, 64),
+            (64, 64),
+            (96, 96),
+            (256, 64),
+            (32, 32),
+            (32, 32),
+            (32, 32),
+            (32, 32),
+            (42, 42),
+            (42, 42),
+            (42, 42),
+            (42, 42),
+            (42, 42),
+            (42, 42),
+            (16, 16),
+            (16, 16),
+            (16, 16),
+            (16, 16),
+            (16, 16),
+            (16, 16),
+            (16, 16),
+            (16, 16),
+            (16, 16),
+            (16, 16),
+            (16, 16),
+            (16, 16),
+            (16, 16),
+            (16, 16),
+            (16, 16),
+            (16, 16),
+            (16, 16),
+            (16, 16),
+            (16, 16),
+            (16, 16),
+            (16, 16),
+            (16, 16),
+            (16, 16),
+            (16, 16),
+            (16, 16),
+            (16, 16),
+            (8, 8),
+            (8, 8),
+            (8, 8),
+            (8, 8),
+            (8, 8),
+            (8, 8),
+            (8, 8),
+            (8, 8),
+            (8, 8),
+            (8, 8),
+            (8, 8),
+            (8, 8),
+            (8, 8),
+            (8, 8),
+            (8, 8),
+            (8, 8),
+            (8, 8),
+            (8, 8),
+            (8, 8),
+            (8, 8),
+            (8, 8),
+        ];
+        let mut imgs = vec![];
+        for (i, (w, h)) in (dims).iter().enumerate() {
+            imgs.push(NamedDynamicImage {
+                name: i.to_string(),
+                img: make_rect(*w, *h),
+            })
+        }
+        let img_collection = ImageCollection::new(imgs);
+        let img_packed = pack(2, img_collection);
+        let _ = write_img("many.png", &img_packed);
     }
 }

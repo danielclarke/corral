@@ -27,12 +27,7 @@ impl<T> Tree2d<T> {
     }
 
     pub fn insert(&mut self, width: u32, height: u32, data: T) -> bool {
-        let total_bb = self.get_total_bounding_box(BoundingBox {
-            x: 0,
-            y: 0,
-            width: 0,
-            height: 0,
-        });
+        let total_bb = self.get_total_bounding_box();
         let opleaf = self.get_smallest_leaf_for_data(total_bb, width, height);
         match opleaf {
             None => false,
@@ -49,6 +44,15 @@ impl<T> Tree2d<T> {
         self.flatten_aux(&mut output);
 
         output
+    }
+
+    pub fn get_total_bounding_box(&self) -> BoundingBox {
+        self.get_total_bounding_box_aux(BoundingBox {
+            x: 0,
+            y: 0,
+            width: 0,
+            height: 0,
+        })
     }
 
     fn partition(data: Rc<T>, bb: BoundingBox, width: u32, height: u32) -> Self {
@@ -188,7 +192,7 @@ impl<T> Tree2d<T> {
         }
     }
 
-    fn get_total_bounding_box(&self, bb: BoundingBox) -> BoundingBox {
+    pub fn get_total_bounding_box_aux(&self, bb: BoundingBox) -> BoundingBox {
         match &self.node {
             None => BoundingBox {
                 x: 0,
@@ -198,8 +202,8 @@ impl<T> Tree2d<T> {
             },
             Some(node) => {
                 node.bb
-                    + node.right.get_total_bounding_box(bb)
-                    + node.down.get_total_bounding_box(bb)
+                    + node.right.get_total_bounding_box_aux(bb)
+                    + node.down.get_total_bounding_box_aux(bb)
             }
         }
     }
