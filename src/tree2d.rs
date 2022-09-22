@@ -136,12 +136,12 @@ impl<T> Tree2d<T> {
             };
 
             if is_leaf {
-                let bb = &BoundingBox {
+                let bb = BoundingBox {
                     x: self.bb.x,
                     y: self.bb.y,
                     width,
                     height,
-                } + &current_bb;
+                } + current_bb;
                 Some((self, bb))
             } else {
                 match &mut self.node {
@@ -197,8 +197,9 @@ impl<T> Tree2d<T> {
                 height: 0,
             },
             Some(node) => {
-                &(&(node.bb) + &(node.right.get_total_bounding_box(bb)))
-                    + &(node.down.get_total_bounding_box(bb))
+                node.bb
+                    + node.right.get_total_bounding_box(bb)
+                    + node.down.get_total_bounding_box(bb)
             }
         }
     }
@@ -231,7 +232,6 @@ mod tree_2d_tests {
             width: 2,
             height: 2,
         };
-
 
         match tree.node {
             None => assert!(false, "root should be a node"),
