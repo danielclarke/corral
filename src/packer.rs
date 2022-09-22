@@ -106,7 +106,8 @@ fn pack(padding: u8, img_collection: ImageCollection) -> DynamicImage {
     }
     let flattened = tree.flatten();
     let bb = tree.get_total_bounding_box();
-    let mut img_packed = image::RgbaImage::new(bb.width + padding as u32, bb.height + padding as u32);
+    let mut img_packed =
+        image::RgbaImage::new(bb.width + padding as u32, bb.height + padding as u32);
     for (img, bb) in flattened {
         image::imageops::replace(
             &mut img_packed,
