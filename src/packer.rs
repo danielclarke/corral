@@ -1,7 +1,7 @@
 use std::error::Error;
 use std::fs;
 
-use crate::tree2d2::Tree2d;
+use crate::tree2d::Tree2d;
 use image::{DynamicImage, ImageEncoder};
 
 pub struct Config {

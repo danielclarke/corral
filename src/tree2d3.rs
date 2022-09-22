@@ -55,128 +55,17 @@ impl PartialOrd for BoundingBox {
     }
 }
 
+pub struct Tree<T> {
+    root: Branch<T>
+}
+
+type Branch<T> = Option<Box<Node<T>>>;
+
 struct Node<T> {
     bb: BoundingBox,
-    right: Box<Tree2d<T>>,
-    down: Box<Tree2d<T>>,
-    data: Rc<T>,
+    right: Branch<T>,
+    down: Branch<T>,
+    data: Option<Rc<T>>
 }
 
-struct Leaf {
-    bb: BoundingBox,
-}
-
-enum Tree2d<T> {
-    Leaf(Leaf),
-    Node(Node<T>),
-}
-
-impl<T> Tree2d<T> {
-    pub fn insert(&mut self, width: u32, height: u32, data: T) -> bool {
-        let optree = self.get_smallest_leaf_for_data(width, height);
-        match optree {
-            None => false,
-            Some((tree, _)) => {
-                match tree {
-                    Self::Leaf(leaf) => {
-                        *tree = Self::partition(Rc::new(data), leaf.bb, width, height);
-                        true
-                    },
-                    Self::Node( .. ) => unreachable!()  
-                }
-                
-            }
-        }
-    }
-
-    fn partition(data: Rc<T>, bb: BoundingBox, width: u32, height: u32) -> Self {
-        let width_remainder = bb.width - width;
-        let height_remainder = bb.height - height;
-
-        let (bb_right, bb_down) = if height_remainder > width_remainder {
-            // ---------------
-            // |  data  |    |
-            // ---------------
-            // |             |
-            // |             |
-            // ---------------
-            (
-                BoundingBox {
-                    x: bb.x + width,
-                    y: bb.y,
-                    width: width_remainder,
-                    height,
-                },
-                BoundingBox {
-                    x: bb.x,
-                    y: bb.y + height,
-                    width: bb.width,
-                    height: height_remainder,
-                },
-            )
-        } else {
-            // ---------------
-            // |     |       |
-            // |data |       |
-            // |     |       |
-            // ------|       |
-            // |     |       |
-            // |     |       |
-            // ---------------
-            (
-                BoundingBox {
-                    x: bb.x + width,
-                    y: bb.y,
-                    width: width_remainder,
-                    height: bb.height,
-                },
-                BoundingBox {
-                    x: bb.x,
-                    y: bb.y + height,
-                    width,
-                    height: height_remainder,
-                },
-            )
-        };
-
-        Self::Node(Node {
-            bb,
-            right: Box::new(Self::Leaf(Leaf { bb: bb_right })),
-            down: Box::new(Self::Leaf(Leaf { bb: bb_down })),
-            data,
-        })
-    }
-
-    fn get_smallest_leaf_for_data(
-        &mut self,
-        width: u32,
-        height: u32,
-    ) -> Option<(&mut Self, BoundingBox)> {
-        // match self {
-        //     Self::Leaf(leaf) => Some((self, leaf.bb)),
-        //     Self::Node(node) => node.right.get_smallest_leaf_for_data(width, height),
-        // }
-
-        let is_leaf = match self {
-            Self::Leaf(..) => true,
-            Self::Node(..) => false,
-        };
-
-        if is_leaf {
-            Some((
-                self,
-                BoundingBox {
-                    x: 0,
-                    y: 0,
-                    width: 0,
-                    height: 0,
-                },
-            ))
-        } else {
-            match self {
-                Self::Leaf(..) => unreachable!(),
-                Self::Node(node) => node.right.get_smallest_leaf_for_data(width, height),
-            }
-        }
-    }
-}
+impl<T>
