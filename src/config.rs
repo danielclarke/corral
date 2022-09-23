@@ -1,6 +1,7 @@
 pub struct Config {
-    input_dir: String,
-    output_file: String,
+    pub padding: u8,
+    pub input_dir: String,
+    pub output_file: String,
 }
 
 impl Config {
@@ -13,6 +14,7 @@ impl Config {
         let output_file = args[2].clone();
 
         Ok(Config {
+            padding: 2u8,
             input_dir,
             output_file,
         })

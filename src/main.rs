@@ -2,11 +2,11 @@ use std::env;
 use std::process;
 
 mod bounding_box;
+mod config;
 mod packer;
 mod tree2d;
-// mod tree2d3;
 
-use packer::{run, Config};
+use config::Config;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -16,7 +16,7 @@ fn main() {
         process::exit(1);
     });
 
-    if let Err(e) = run(config) {
+    if let Err(e) = packer::run(config) {
         println!("Application error {e}");
         process::exit(1);
     }

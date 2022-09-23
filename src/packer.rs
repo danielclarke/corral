@@ -1,35 +1,55 @@
 use std::error::Error;
 use std::fs;
+use std::io::Write;
 
+use crate::config::Config;
 use crate::tree2d::{DataSize, Tree2d};
 use image::{DynamicImage, ImageEncoder};
-
-pub struct Config {
-    padding: u8,
-    input_dir: String,
-    output_file: String,
-}
-
-impl Config {
-    pub fn parse(args: &[String]) -> Result<Config, &'static str> {
-        if args.len() < 3 {
-            return Err("Too few arguments, call like: `corral input_dir output_sheet.png`");
-        }
-
-        let input_dir = args[1].clone();
-        let output_file = args[2].clone();
-
-        Ok(Config {
-            padding: 2u8,
-            input_dir,
-            output_file,
-        })
-    }
-}
+use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 struct NamedDynamicImage {
     name: String,
     img: DynamicImage,
+}
+
+struct PackedImage {
+    img: DynamicImage,
+    json: serde_json::Value,
+}
+
+impl PackedImage {
+    fn write(&self, output_file: &str) -> Result<(), Box<dyn Error>> {
+        let buf = fs::File::create(&output_file)?;
+        let encoder = image::codecs::png::PngEncoder::new_with_quality(
+            buf,
+            image::codecs::png::CompressionType::Best,
+            image::codecs::png::FilterType::Adaptive,
+        );
+
+        encoder.write_image(
+            self.img.as_bytes(),
+            self.img.width(),
+            self.img.height(),
+            self.img.color(),
+        )?;
+
+        let json_file = output_file.split('.').collect::<Vec<&str>>()[0].to_owned() + ".json";
+        let mut buf = fs::File::create(&json_file)?;
+        match buf.write_all(self.json.to_string().as_bytes()) {
+            Ok(..) => Ok(()),
+            Err(e) => Result::Err(Box::new(e)),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize)]
+struct SpriteData {
+    name: String,
+    x: u32,
+    y: u32,
+    width: u32,
+    height: u32,
 }
 
 struct ImageCollection {
@@ -64,8 +84,8 @@ impl ImageCollection {
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let img_collection = load_all(&config.input_dir)?;
-    let img_packed = pack(config.padding, img_collection)?;
-    write_img(&config.output_file, &img_packed)?;
+    let packed_img = pack(config.padding, img_collection)?;
+    packed_img.write(&config.output_file)?;
     Ok(())
 }
 
@@ -87,56 +107,43 @@ fn load_all(input_dir: &str) -> Result<ImageCollection, Box<dyn Error>> {
     Ok(ImageCollection::new(images))
 }
 
-fn pack(padding: u8, img_collection: ImageCollection) -> Result<DynamicImage, Box<dyn Error>> {
-    // let height =
-    //     (img_collection.max_height + padding as u32) * img_collection.num_images + padding as u32;
-    // let width =
-    //     (img_collection.max_width + padding as u32) * img_collection.num_images + padding as u32;
-
+fn pack(padding: u8, img_collection: ImageCollection) -> Result<PackedImage, Box<dyn Error>> {
     let mut data = vec![];
-    for NamedDynamicImage { img, .. } in img_collection.named_images.iter() {
+    for named_img in img_collection.named_images.iter() {
         data.push((
             DataSize {
-                width: img.width() + padding as u32,
-                height: img.height() + padding as u32,
+                width: named_img.img.width() + padding as u32,
+                height: named_img.img.height() + padding as u32,
             },
-            img,
+            named_img,
         ));
     }
-    let mut tree = Tree2d::<&DynamicImage>::new();
+    let mut tree = Tree2d::<&NamedDynamicImage>::new();
     tree.insert_all(data)?;
     let flattened = tree.flatten();
     let bb = tree.get_total_bounding_box();
     let mut img_packed =
         image::RgbaImage::new(bb.width + padding as u32, bb.height + padding as u32);
-    for (img, bb) in flattened {
-        image::imageops::replace(
-            &mut img_packed,
-            *img,
-            bb.x as i64 + padding as i64,
-            bb.y as i64 + padding as i64,
-        );
+    let mut sprite_data = vec![];
+
+    for (named_img, bb) in flattened {
+        let x = bb.x as i64 + padding as i64;
+        let y = bb.y as i64 + padding as i64;
+        image::imageops::replace(&mut img_packed, &named_img.img, x, y);
+
+        sprite_data.push(SpriteData {
+            name: named_img.name.to_owned(),
+            x: x as u32,
+            y: y as u32,
+            width: named_img.img.width(),
+            height: named_img.img.height(),
+        });
     }
 
-    Ok(DynamicImage::ImageRgba8(img_packed))
-}
-
-fn write_img(output_file: &str, img_packed: &DynamicImage) -> Result<(), Box<dyn Error>> {
-    let buf = fs::File::create(&output_file)?;
-    let encoder = image::codecs::png::PngEncoder::new_with_quality(
-        buf,
-        image::codecs::png::CompressionType::Best,
-        image::codecs::png::FilterType::Adaptive,
-    );
-
-    encoder.write_image(
-        img_packed.as_bytes(),
-        img_packed.width(),
-        img_packed.height(),
-        img_packed.color(),
-    )?;
-
-    Ok(())
+    Ok(PackedImage {
+        img: DynamicImage::ImageRgba8(img_packed),
+        json: json!(sprite_data),
+    })
 }
 
 #[cfg(test)]
@@ -176,7 +183,7 @@ mod tests {
             img: make_rect(w, h),
         }]);
 
-        if let Some(img) = pack(padding as u8, img_collection)?.as_rgba8() {
+        if let Some(img) = pack(padding as u8, img_collection)?.img.as_rgba8() {
             let p: Vec<&image::Rgba<u8>> = img.pixels().collect();
             let q: Vec<&image::Rgba<u8>> = expected_output_img.pixels().collect();
             assert_eq!(q, p);
@@ -295,7 +302,7 @@ mod tests {
         }
         let img_collection = ImageCollection::new(imgs);
         let img_packed = pack(2, img_collection)?;
-        let _ = write_img("many.png", &img_packed);
+        img_packed.write("many.png")?;
         Ok(())
     }
 }
