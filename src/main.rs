@@ -1,5 +1,4 @@
-use std::env;
-use std::process;
+use std::{env, error::Error, process};
 
 mod bounding_box;
 mod config;
@@ -8,7 +7,7 @@ mod tree2d;
 
 use config::Config;
 
-fn main() {
+fn main() -> Result<(), Box<dyn Error>> {
     let args: Vec<String> = env::args().collect();
 
     let config = Config::parse(&args).unwrap_or_else(|err| {
@@ -16,8 +15,5 @@ fn main() {
         process::exit(1);
     });
 
-    if let Err(e) = packer::run(config) {
-        println!("Application error {e}");
-        process::exit(1);
-    }
+    packer::run(config)
 }
