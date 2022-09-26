@@ -130,7 +130,7 @@ impl<T> Tree2d<T> {
     }
 
     pub fn insert(&mut self, width: u32, height: u32, data: T) -> Result<(), Box<dyn Error>> {
-        let handle = self.get_smallest_leaf_handle_for_data(width, height);
+        let handle = self.get_most_square_leaf_handle_for_data(width, height);
         match handle {
             None => Err(Box::new(InsertionError {
                 msg: "Error inserting data, no partition large enough".to_owned(),
@@ -192,6 +192,32 @@ impl<T> Tree2d<T> {
             None
         } else {
             leaves.sort_by(|a, b| a.0.cmp(&b.0));
+            Some(leaves[0].1)
+        }
+    }
+
+    fn get_most_square_leaf_handle_for_data(&mut self, width: u32, height: u32) -> Option<Handle> {
+        let mut leaves = vec![];
+        let total_bb = self.get_total_bounding_box();
+        for handle in self.leaves() {
+            if let Some(node) = self.nodes.get(handle) {
+                if node.bb.can_contain(width, height) {
+                    let bb = total_bb
+                        + BoundingBox {
+                            x: node.bb.x,
+                            y: node.bb.y,
+                            width,
+                            height,
+                        };
+                    let ratio = (bb.width as f64 / bb.height as f64).max(bb.height as f64 / bb.width as f64);
+                    leaves.push((ratio, handle));
+                }
+            }
+        }
+        if leaves.is_empty() {
+            None
+        } else {
+            leaves.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
             Some(leaves[0].1)
         }
     }
