@@ -13,11 +13,11 @@ impl BoundingBox {
         width <= self.width && height <= self.height
     }
 
-    fn area(&self) -> u32 {
+    pub fn area(&self) -> u32 {
         self.width * self.height
     }
 
-    fn perimeter(&self) -> u32 {
+    pub fn perimeter(&self) -> u32 {
         self.width * 2 + self.height * 2
     }
 }

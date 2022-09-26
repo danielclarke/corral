@@ -396,13 +396,7 @@ mod tree_2d_tests {
 
         assert_eq!(tree.nodes.data.len(), 3);
 
-        let single_bb = BoundingBox {
-            x: 0,
-            y: 0,
-            width: 1,
-            height: 1,
-        };
-        assert_eq!(single_bb, tree.get_total_bounding_box());
+        assert_eq!(1, tree.get_total_bounding_box().area());
 
         Ok(())
     }
@@ -426,13 +420,7 @@ mod tree_2d_tests {
 
         assert_eq!(tree.nodes.data.len(), 9);
 
-        let single_bb = BoundingBox {
-            x: 0,
-            y: 0,
-            width: 4,
-            height: 1,
-        };
-        assert_eq!(single_bb, tree.get_total_bounding_box());
+        assert_eq!(4, tree.get_total_bounding_box().area());
 
         Ok(())
     }
