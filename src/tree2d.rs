@@ -23,11 +23,12 @@ type Handle = usize;
 
 struct Arena<T> {
     data: Vec<T>,
+    next_handle: usize,
 }
 
 impl<T> Arena<T> {
     fn get(&self, handle: Handle) -> Option<&T> {
-        if self.data.len() < handle {
+        if self.data.len() < handle || self.next_handle <= handle {
             None
         } else {
             Some(&self.data[handle])
@@ -44,16 +45,21 @@ impl<T> Arena<T> {
 
     fn store(&mut self, data: T) -> Handle {
         self.data.push(data);
-        self.data.len() - 1
+        self.next_handle += 1;
+        self.next_handle - 1
     }
 }
 
 impl<T> Arena<T> {
     fn new() -> Self {
-        Arena { data: Vec::new() }
+        Arena {
+            data: Vec::new(),
+            next_handle: 0,
+        }
     }
 }
 
+#[derive(Clone, Copy)]
 pub struct DataSize {
     pub width: u32,
     pub height: u32,
@@ -78,7 +84,7 @@ struct Link<T> {
 }
 
 impl<T> Node<T> {
-    fn leaf(bb: BoundingBox, parent: Option<Handle>) -> Self {
+    fn new_leaf(bb: BoundingBox, parent: Option<Handle>) -> Self {
         Self {
             bb,
             parent,
@@ -96,7 +102,7 @@ impl<T> Node<T> {
 
 impl<T> Tree2d<T> {
     pub fn new() -> Self {
-        let node: Node<T> = Node::leaf(
+        let node: Node<T> = Node::new_leaf(
             BoundingBox {
                 x: 0,
                 y: 0,
@@ -130,12 +136,13 @@ impl<T> Tree2d<T> {
     }
 
     pub fn insert(&mut self, width: u32, height: u32, data: T) -> Result<(), Box<dyn Error>> {
-        let handle = self.get_most_square_leaf_handle_for_data(width, height);
+        let total_bb = self.get_total_bounding_box();
+        let handle = self.get_most_square_leaf_handle_for_data(total_bb, width, height);
         match handle {
             None => Err(Box::new(InsertionError {
                 msg: "Error inserting data, no partition large enough".to_owned(),
             })),
-            Some(handle) => {
+            Some((handle, _)) => {
                 self.partition(handle, data, width, height);
                 Ok(())
             }
@@ -143,8 +150,20 @@ impl<T> Tree2d<T> {
     }
 
     pub fn insert_all(&mut self, data: Vec<(DataSize, T)>) -> Result<(), Box<dyn Error>> {
+        // self.nodes.data.reserve(data.len() * 2);
+        let mut total_bb = self.get_total_bounding_box();
         for (DataSize { width, height }, data) in data {
-            self.insert(width, height, data)?;
+            let handle = self.get_most_square_leaf_handle_for_data(total_bb, width, height);
+            match handle {
+                None => Err(Box::new(InsertionError {
+                    msg: "Error inserting data, no partition large enough".to_owned(),
+                })),
+                Some((handle, bb)) => {
+                    self.partition(handle, data, width, height);
+                    total_bb = bb;
+                    Ok(())
+                }
+            }?;
         }
         Ok(())
     }
@@ -196,9 +215,14 @@ impl<T> Tree2d<T> {
         }
     }
 
-    fn get_most_square_leaf_handle_for_data(&mut self, width: u32, height: u32) -> Option<Handle> {
+    fn get_most_square_leaf_handle_for_data(
+        &mut self,
+        total_bb: BoundingBox,
+        width: u32,
+        height: u32,
+    ) -> Option<(Handle, BoundingBox)> {
         let mut leaves = vec![];
-        let total_bb = self.get_total_bounding_box();
+        // let total_bb = self.get_total_bounding_box();
         for handle in self.leaves() {
             if let Some(node) = self.nodes.get(handle) {
                 if node.bb.can_contain(width, height) {
@@ -209,8 +233,9 @@ impl<T> Tree2d<T> {
                             width,
                             height,
                         };
-                    let ratio = (bb.width as f64 / bb.height as f64).max(bb.height as f64 / bb.width as f64);
-                    leaves.push((ratio, handle));
+                    let ratio = (bb.width as f64 / bb.height as f64)
+                        .max(bb.height as f64 / bb.width as f64);
+                    leaves.push((ratio, handle, bb));
                 }
             }
         }
@@ -218,7 +243,7 @@ impl<T> Tree2d<T> {
             None
         } else {
             leaves.sort_by(|a, b| a.0.partial_cmp(&b.0).unwrap());
-            Some(leaves[0].1)
+            Some((leaves[0].1, leaves[0].2))
         }
     }
 
@@ -275,8 +300,8 @@ impl<T> Tree2d<T> {
                     )
                 };
                 (
-                    Some(Node::leaf(bb_right, Some(handle))),
-                    Some(Node::leaf(bb_down, Some(handle))),
+                    Some(Node::new_leaf(bb_right, Some(handle))),
+                    Some(Node::new_leaf(bb_down, Some(handle))),
                 )
             }
         };
@@ -454,9 +479,17 @@ mod tree_2d_tests {
     // #[test]
     // fn one_million_insertions() -> Result<(), Box<dyn Error>> {
     //     let mut tree = Tree2d::<u32>::new();
-    //     for i in 0..1_000_000 {
-    //         tree.insert(1, 1, i)?;
-    //     }
+    //     let data = vec![
+    //         (
+    //             DataSize {
+    //                 width: 1,
+    //                 height: 1
+    //             },
+    //             0
+    //         );
+    //         100_000
+    //     ];
+    //     tree.insert_all(data)?;
     //     Ok(())
     // }
 }

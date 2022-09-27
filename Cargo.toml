@@ -3,6 +3,16 @@ name = "corral"
 version = "0.1.0"
 edition = "2021"
 
+description = "A simple sprite sheet packer"
+homepage = "https://github.com/danielclarke/corral"
+repository = "https://github.com/danielclarke/corral"
+readme = "README.md"
+license-file = "LICENCE-MIT"
+
+keywords = ["gamedev", "sprite", "spritesheet", "sprite sheet"]
+categories = ["command-line-utilities"]
+
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
