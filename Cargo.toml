@@ -9,7 +9,7 @@ repository = "https://github.com/danielclarke/corral"
 readme = "README.md"
 license-file = "LICENCE-MIT"
 
-keywords = ["gamedev", "sprite", "spritesheet", "sprite sheet"]
+keywords = ["gamedev", "sprite", "spritesheet"]
 categories = ["command-line-utilities"]
 
 
