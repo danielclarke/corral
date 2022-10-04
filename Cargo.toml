@@ -7,6 +7,7 @@ description = "A simple sprite sheet packer"
 homepage = "https://github.com/danielclarke/corral"
 repository = "https://github.com/danielclarke/corral"
 readme = "README.md"
+license = "MIT"
 license-file = "LICENCE-MIT"
 
 keywords = ["gamedev", "sprite", "spritesheet"]
