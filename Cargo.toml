@@ -20,6 +20,7 @@ categories = ["command-line-utilities"]
 image = "0.24.3"
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
+# serde-lua = {version = "0.1.0", path = "src/serde-lua"}
 
 [profile.release]
 strip = true  # Automatically strip symbols from the binary.

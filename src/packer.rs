@@ -52,6 +52,35 @@ struct SpriteData {
     height: u32,
 }
 
+impl SpriteData {
+    fn to_lua_string(&self) -> String {
+        std::format!(
+            "    {name} = {{
+        x = {x},
+        y = {y},
+        width = {width},
+        height = {height},
+    }}",
+            name = self.name.replace(" ", "_").to_uppercase(),
+            x = self.x,
+            y = self.y,
+            width = self.width,
+            height = self.height
+        )
+    }
+
+    fn to_json_string(&self) -> String {
+        std::format!(
+            "{{\"height\":{height},\"name\":\"{name}\",\"width\":{width},\"x\":{x},\"y\":{y}}}",
+            name = self.name.replace(" ", "_"),
+            x = self.x,
+            y = self.y,
+            width = self.width,
+            height = self.height
+        )
+    }
+}
+
 struct ImageCollection {
     named_images: Vec<NamedDynamicImage>,
     max_width: u32,
@@ -96,7 +125,7 @@ fn load_all(input_dir: &str) -> Result<ImageCollection, Box<dyn Error>> {
 
     for path in paths {
         let path = path?.path();
-        if let (Some(path_str), Some(fname)) = (path.to_str(), path.file_name()) {
+        if let (Some(path_str), Some(fname)) = (path.to_str(), path.file_prefix()) {
             images.push(NamedDynamicImage {
                 name: fname.to_string_lossy().to_string(),
                 img: image::io::Reader::open(path_str)?.decode()?,
@@ -131,14 +160,25 @@ fn pack(padding: u8, img_collection: ImageCollection) -> Result<PackedImage, Box
         let y = bb.y as i64 + padding as i64;
         image::imageops::replace(&mut img_packed, &named_img.img, x, y);
 
-        sprite_data.push(SpriteData {
+        let sd = SpriteData {
             name: named_img.name.to_owned(),
             x: x as u32,
             y: y as u32,
             width: named_img.img.width(),
             height: named_img.img.height(),
-        });
+        };
+        println!("{},", sd.to_lua_string());
+        println!("{},", sd.to_json_string());
+        sprite_data.push(sd);
     }
+
+    let lua_string: String = sprite_data.iter().map(|sd| sd.to_lua_string() + ",\n").collect();
+    let lua_string = format!("local {fname} = {{\n", fname = "out") + &lua_string + "}";
+    println!("{}", lua_string);
+
+    let json_string: String = sprite_data.iter().map(|sd| sd.to_json_string() + ",").collect();
+    let json_string = "[".to_owned() + &json_string + "]";
+    println!("{}", json_string);
 
     Ok(PackedImage {
         img: DynamicImage::ImageRgba8(img_packed),
