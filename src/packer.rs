@@ -5,8 +5,6 @@ use std::io::Write;
 use crate::config::Config;
 use crate::tree2d::{DataSize, Tree2d};
 use image::{DynamicImage, ImageEncoder};
-use serde::{Deserialize, Serialize};
-use serde_json::json;
 
 struct NamedDynamicImage {
     name: String,
@@ -15,7 +13,7 @@ struct NamedDynamicImage {
 
 struct PackedImage {
     img: DynamicImage,
-    json: serde_json::Value,
+    meta_data: String,
 }
 
 impl PackedImage {
@@ -36,14 +34,13 @@ impl PackedImage {
 
         let json_file = output_file.split('.').collect::<Vec<&str>>()[0].to_owned() + ".json";
         let mut buf = fs::File::create(&json_file)?;
-        match buf.write_all(self.json.to_string().as_bytes()) {
+        match buf.write_all(self.meta_data.as_bytes()) {
             Ok(..) => Ok(()),
             Err(e) => Result::Err(Box::new(e)),
         }
     }
 }
 
-#[derive(Serialize, Deserialize)]
 struct SpriteData {
     name: String,
     x: u32,
@@ -177,12 +174,12 @@ fn pack(padding: u8, img_collection: ImageCollection) -> Result<PackedImage, Box
     println!("{}", lua_string);
 
     let json_string: String = sprite_data.iter().map(|sd| sd.to_json_string() + ",").collect();
-    let json_string = "[".to_owned() + &json_string + "]";
+    let json_string = "[".to_owned() + &json_string[..json_string.len() - 1] + "]";
     println!("{}", json_string);
 
     Ok(PackedImage {
         img: DynamicImage::ImageRgba8(img_packed),
-        json: json!(sprite_data),
+        meta_data: json_string,
     })
 }
 
