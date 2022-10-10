@@ -169,11 +169,17 @@ fn pack(padding: u8, img_collection: ImageCollection) -> Result<PackedImage, Box
         sprite_data.push(sd);
     }
 
-    let lua_string: String = sprite_data.iter().map(|sd| sd.to_lua_string() + ",\n").collect();
+    let lua_string: String = sprite_data
+        .iter()
+        .map(|sd| sd.to_lua_string() + ",\n")
+        .collect();
     let lua_string = format!("local {fname} = {{\n", fname = "out") + &lua_string + "}";
     println!("{}", lua_string);
 
-    let json_string: String = sprite_data.iter().map(|sd| sd.to_json_string() + ",").collect();
+    let json_string: String = sprite_data
+        .iter()
+        .map(|sd| sd.to_json_string() + ",")
+        .collect();
     let json_string = "[".to_owned() + &json_string[..json_string.len() - 1] + "]";
     println!("{}", json_string);
 
