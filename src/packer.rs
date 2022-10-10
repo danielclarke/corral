@@ -169,8 +169,6 @@ fn pack(
             width: named_img.img.width(),
             height: named_img.img.height(),
         };
-        println!("{},", sd.to_lua_string());
-        println!("{},", sd.to_json_string());
         sprite_data.push(sd);
     }
 
@@ -187,7 +185,9 @@ fn pack(
                 .iter()
                 .map(|sd| sd.to_lua_string() + ",\n")
                 .collect();
-            format!("local {fname} = {{\n", fname = "out") + &lua_string + "}"
+            format!("local {fname} = {{\n", fname = "out")
+                + &lua_string
+                + &format!("}}\n\nreturn {fname}", fname = "out")
         }
     };
 
