@@ -176,18 +176,20 @@ fn pack(
         MetaDataFormat::Json => {
             let json_string: String = sprite_data
                 .iter()
-                .map(|sd| sd.to_json_string() + ",")
-                .collect();
-            "[".to_owned() + &json_string[..json_string.len() - 1] + "]"
+                .map(|sd| sd.to_json_string())
+                .collect::<Vec<String>>()
+                .join(",");
+            "[".to_owned() + &json_string + "]\n"
         }
         MetaDataFormat::Lua => {
             let lua_string: String = sprite_data
                 .iter()
-                .map(|sd| sd.to_lua_string() + ",\n")
-                .collect();
+                .map(|sd| sd.to_lua_string())
+                .collect::<Vec<String>>()
+                .join(",\n");
             format!("local {fname} = {{\n", fname = "out")
                 + &lua_string
-                + &format!("}}\n\nreturn {fname}", fname = "out")
+                + &format!("\n}}\n\nreturn {fname}\n", fname = "out")
         }
     };
 
