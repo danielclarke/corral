@@ -3,6 +3,7 @@ use std::fs;
 use std::io::Write;
 
 use crate::config::Config;
+use crate::config::MetaDataFormat;
 use crate::tree2d::{DataSize, Tree2d};
 use image::{DynamicImage, ImageEncoder};
 
@@ -110,7 +111,7 @@ impl ImageCollection {
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let img_collection = load_all(&config.input_dir)?;
-    let packed_img = pack(config.padding, img_collection)?;
+    let packed_img = pack(config.output_file_format, config.padding, img_collection)?;
     packed_img.write(&config.output_file)?;
     Ok(())
 }
@@ -133,7 +134,11 @@ fn load_all(input_dir: &str) -> Result<ImageCollection, Box<dyn Error>> {
     Ok(ImageCollection::new(images))
 }
 
-fn pack(padding: u8, img_collection: ImageCollection) -> Result<PackedImage, Box<dyn Error>> {
+fn pack(
+    output_file_format: MetaDataFormat,
+    padding: u8,
+    img_collection: ImageCollection,
+) -> Result<PackedImage, Box<dyn Error>> {
     let mut data = vec![];
     for named_img in img_collection.named_images.iter() {
         data.push((
@@ -169,23 +174,26 @@ fn pack(padding: u8, img_collection: ImageCollection) -> Result<PackedImage, Box
         sprite_data.push(sd);
     }
 
-    let lua_string: String = sprite_data
-        .iter()
-        .map(|sd| sd.to_lua_string() + ",\n")
-        .collect();
-    let lua_string = format!("local {fname} = {{\n", fname = "out") + &lua_string + "}";
-    println!("{}", lua_string);
-
-    let json_string: String = sprite_data
-        .iter()
-        .map(|sd| sd.to_json_string() + ",")
-        .collect();
-    let json_string = "[".to_owned() + &json_string[..json_string.len() - 1] + "]";
-    println!("{}", json_string);
+    let meta_data = match output_file_format {
+        MetaDataFormat::Json => {
+            let json_string: String = sprite_data
+                .iter()
+                .map(|sd| sd.to_json_string() + ",")
+                .collect();
+            "[".to_owned() + &json_string[..json_string.len() - 1] + "]"
+        }
+        MetaDataFormat::Lua => {
+            let lua_string: String = sprite_data
+                .iter()
+                .map(|sd| sd.to_lua_string() + ",\n")
+                .collect();
+            format!("local {fname} = {{\n", fname = "out") + &lua_string + "}"
+        }
+    };
 
     Ok(PackedImage {
         img: DynamicImage::ImageRgba8(img_packed),
-        meta_data: json_string,
+        meta_data,
     })
 }
 
@@ -226,7 +234,10 @@ mod tests {
             img: make_rect(w, h),
         }]);
 
-        if let Some(img) = pack(padding as u8, img_collection)?.img.as_rgba8() {
+        if let Some(img) = pack(MetaDataFormat::Json, padding as u8, img_collection)?
+            .img
+            .as_rgba8()
+        {
             let p: Vec<&image::Rgba<u8>> = img.pixels().collect();
             let q: Vec<&image::Rgba<u8>> = expected_output_img.pixels().collect();
             assert_eq!(q, p);
