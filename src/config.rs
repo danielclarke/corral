@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::format};
+use std::fmt;
 
 #[derive(Clone, Copy)]
 pub enum MetaDataFormat {
@@ -18,9 +18,10 @@ struct NamedArg<'a> {
     value: &'a str,
 }
 
-impl NamedArg<'_> {
-    fn to_string(&self) -> String {
-        format!(
+impl fmt::Display for NamedArg<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        write!(
+            f,
             "name: {name}, value: {value}",
             name = self.name,
             value = self.value
@@ -40,7 +41,7 @@ impl<'a> NamedParam<'a> {
                 if index != 0 {
                     return Ok(None);
                 }
-                let invoked_arg: Vec<&str> = arg.split("=").collect();
+                let invoked_arg: Vec<&str> = arg.split('=').collect();
                 if invoked_arg.len() != 2 {
                     return Err("incorrect format");
                 }
@@ -48,7 +49,7 @@ impl<'a> NamedParam<'a> {
                     if invoked_arg[1] == *value {
                         return Ok(Some(NamedArg {
                             name: self.name,
-                            value: *value,
+                            value,
                         }));
                     }
                 }
@@ -56,9 +57,12 @@ impl<'a> NamedParam<'a> {
         }
         Ok(None)
     }
+}
 
-    fn to_string(&self) -> String {
-        format!(
+impl fmt::Display for NamedParam<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        write!(
+            f,
             "[--{name}={values}]",
             name = self.name,
             values = self.valid_values.join("|")

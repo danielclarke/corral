@@ -65,17 +65,20 @@ pub struct DataSize {
     pub height: u32,
 }
 
+#[allow(dead_code)]
 pub struct Tree2d<T> {
     root: Handle,
     nodes: Arena<Node<T>>,
 }
 
+#[allow(dead_code)]
 struct Node<T> {
     bb: BoundingBox,
     parent: Option<Handle>,
     link: Option<Link<T>>,
 }
 
+#[allow(dead_code)]
 struct Link<T> {
     data: T,
     data_bb: BoundingBox,
@@ -135,6 +138,7 @@ impl<T> Tree2d<T> {
         result
     }
 
+    #[allow(dead_code)]
     pub fn insert(&mut self, width: u32, height: u32, data: T) -> Result<(), Box<dyn Error>> {
         let total_bb = self.get_total_bounding_box();
         let handle = self.get_most_square_leaf_handle_for_data(total_bb, width, height);
@@ -189,6 +193,7 @@ impl<T> Tree2d<T> {
         result
     }
 
+    #[allow(dead_code)]
     fn get_smallest_leaf_handle_for_data(&mut self, width: u32, height: u32) -> Option<Handle> {
         let mut leaves = vec![];
         let total_bb = self.get_total_bounding_box();

@@ -23,7 +23,7 @@ impl PackedImage {
         output_file: &str,
         output_file_format: MetaDataFormat,
     ) -> Result<(), Box<dyn Error>> {
-        let buf = fs::File::create(&output_file)?;
+        let buf = fs::File::create(output_file)?;
         let encoder = image::codecs::png::PngEncoder::new_with_quality(
             buf,
             image::codecs::png::CompressionType::Best,
@@ -68,7 +68,7 @@ impl SpriteData {
         width = {width},
         height = {height},
     }}",
-            name = self.name.replace(" ", "_").to_uppercase(),
+            name = self.name.replace(' ', "_").to_uppercase(),
             x = self.x,
             y = self.y,
             width = self.width,
@@ -79,7 +79,7 @@ impl SpriteData {
     fn to_json_string(&self) -> String {
         std::format!(
             "{{\"height\":{height},\"name\":\"{name}\",\"width\":{width},\"x\":{x},\"y\":{y}}}",
-            name = self.name.replace(" ", "_"),
+            name = self.name.replace(' ', "_"),
             x = self.x,
             y = self.y,
             width = self.width,
@@ -88,6 +88,7 @@ impl SpriteData {
     }
 }
 
+#[allow(dead_code)]
 struct ImageCollection {
     named_images: Vec<NamedDynamicImage>,
     max_width: u32,
@@ -103,7 +104,7 @@ impl ImageCollection {
             max_width = max_width.max(img.width());
             max_height = max_height.max(img.height());
         }
-        let num_images = (&named_images).len() as u32;
+        let num_images = named_images.len() as u32;
 
         named_images.sort_by(|a, b| {
             (b.img.width() * b.img.height()).cmp(&(a.img.width() * a.img.height()))
