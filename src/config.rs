@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, process::exit};
 
 #[derive(Clone, Copy)]
 pub enum MetaDataFormat {
@@ -15,23 +15,30 @@ pub struct Config {
 
 struct NamedArg<'a> {
     name: &'a str,
-    value: &'a str,
+    value: Option<&'a str>,
 }
 
 impl fmt::Display for NamedArg<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(
-            f,
-            "name: {name}, value: {value}",
-            name = self.name,
-            value = self.value
-        )
+        match self.value {
+            Some(value) => {
+                write!(
+                    f,
+                    "name: {name}, value: {value}",
+                    name = self.name,
+                    value = value
+                )
+            }
+            None => {
+                write!(f, "name: {name}", name = self.name,)
+            }
+        }
     }
 }
 
 struct NamedParam<'a> {
     name: &'a str,
-    valid_values: &'a [&'a str],
+    valid_values: Option<&'a [&'a str]>,
 }
 
 impl<'a> NamedParam<'a> {
@@ -42,14 +49,30 @@ impl<'a> NamedParam<'a> {
                     return Ok(None);
                 }
                 let invoked_arg: Vec<&str> = arg.split('=').collect();
+                if invoked_arg.len() == 1 {
+                    return Ok(Some(NamedArg {
+                        name: self.name,
+                        value: None,
+                    }));
+                }
                 if invoked_arg.len() != 2 {
                     return Err("incorrect format");
                 }
-                for value in self.valid_values {
-                    if invoked_arg[1] == *value {
+                match self.valid_values {
+                    Some(valid_values) => {
+                        for value in valid_values {
+                            if invoked_arg[1] == *value {
+                                return Ok(Some(NamedArg {
+                                    name: self.name,
+                                    value: Some(value),
+                                }));
+                            }
+                        }
+                    }
+                    None => {
                         return Ok(Some(NamedArg {
                             name: self.name,
-                            value,
+                            value: None,
                         }));
                     }
                 }
@@ -61,12 +84,19 @@ impl<'a> NamedParam<'a> {
 
 impl fmt::Display for NamedParam<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        write!(
-            f,
-            "[--{name}={values}]",
-            name = self.name,
-            values = self.valid_values.join("|")
-        )
+        match self.valid_values {
+            Some(valid_values) => {
+                write!(
+                    f,
+                    "[--{name}={values}]",
+                    name = self.name,
+                    values = valid_values.join("|")
+                )
+            }
+            None => {
+                write!(f, "[--{name}]", name = self.name,)
+            }
+        }
     }
 }
 
@@ -75,9 +105,12 @@ impl Config {
         let named_params = [
             NamedParam {
                 name: "data-fmt",
-                valid_values: &["json", "lua"],
+                valid_values: Some(&["json", "lua"]),
             },
-            // NamedParam {name: "padding"}
+            NamedParam {
+                name: "help",
+                valid_values: None,
+            }, // NamedParam {name: "padding"}
         ];
 
         let mut metadata_format = MetaDataFormat::Json;
@@ -87,19 +120,28 @@ impl Config {
                 match arg {
                     NamedArg {
                         name: "data-fmt",
-                        value: "json",
+                        value: Some("json"),
                     } => metadata_format = MetaDataFormat::Json,
                     NamedArg {
                         name: "data-fmt",
-                        value: "lua",
+                        value: Some("lua"),
                     } => metadata_format = MetaDataFormat::Lua,
-                    _ => {}
+                    NamedArg {
+                        name: "help",
+                        value: None,
+                    } => {
+                        println!("A basic sprite sheet packer\n\nUsage: `corral input_dir output_sheet.png [--data-fmt=json|lua]");
+                        exit(0);
+                    }
+                    _ => {
+                        return Err("Unrecognised argument");
+                    }
                 }
             };
         }
 
         if args.len() < 3 {
-            return Err("Too few arguments, call like: `corral input_dir output_sheet.png`");
+            return Err("Too few arguments, Usage: `corral input_dir output_sheet.png [--data-fmt=json|lua]`");
         }
 
         let input_dir = args[1].clone();
