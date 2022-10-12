@@ -1,5 +1,5 @@
 # Corral
-## A Basic Sprite Sheet Packer
+## A Simple Sprite Sheet Packer
 
 Corral creates a sprite sheet and json data from a folder of images.
 

@@ -130,7 +130,7 @@ impl Config {
                         name: "help",
                         value: None,
                     } => {
-                        println!("A basic sprite sheet packer\n\nUsage: `corral input_dir output_sheet.png [--data-fmt=json|lua]");
+                        println!("A simple sprite sheet packer\n\nUsage: `corral input_dir output_sheet.png [--data-fmt=json|lua]");
                         exit(0);
                     }
                     _ => {
