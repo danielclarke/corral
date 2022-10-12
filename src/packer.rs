@@ -18,7 +18,11 @@ struct PackedImage {
 }
 
 impl PackedImage {
-    fn write(&self, output_file: &str) -> Result<(), Box<dyn Error>> {
+    fn write(
+        &self,
+        output_file: &str,
+        output_file_format: MetaDataFormat,
+    ) -> Result<(), Box<dyn Error>> {
         let buf = fs::File::create(&output_file)?;
         let encoder = image::codecs::png::PngEncoder::new_with_quality(
             buf,
@@ -33,7 +37,12 @@ impl PackedImage {
             self.img.color(),
         )?;
 
-        let json_file = output_file.split('.').collect::<Vec<&str>>()[0].to_owned() + ".json";
+        let extension = match output_file_format {
+            MetaDataFormat::Json => ".json",
+            MetaDataFormat::Lua => ".lua",
+        };
+
+        let json_file = output_file.split('.').collect::<Vec<&str>>()[0].to_owned() + extension;
         let mut buf = fs::File::create(&json_file)?;
         match buf.write_all(self.meta_data.as_bytes()) {
             Ok(..) => Ok(()),
@@ -111,8 +120,13 @@ impl ImageCollection {
 
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let img_collection = load_all(&config.input_dir)?;
-    let packed_img = pack(config.output_file_format, config.padding, img_collection)?;
-    packed_img.write(&config.output_file)?;
+    let packed_img = pack(
+        &config.output_file,
+        config.output_file_format,
+        config.padding,
+        img_collection,
+    )?;
+    packed_img.write(&config.output_file, config.output_file_format)?;
     Ok(())
 }
 
@@ -135,6 +149,7 @@ fn load_all(input_dir: &str) -> Result<ImageCollection, Box<dyn Error>> {
 }
 
 fn pack(
+    output_file_name: &str,
     output_file_format: MetaDataFormat,
     padding: u8,
     img_collection: ImageCollection,
@@ -182,14 +197,15 @@ fn pack(
             "[".to_owned() + &json_string + "]\n"
         }
         MetaDataFormat::Lua => {
+            let module_name = output_file_name.split('.').collect::<Vec<&str>>()[0].to_owned();
             let lua_string: String = sprite_data
                 .iter()
                 .map(|sd| sd.to_lua_string())
                 .collect::<Vec<String>>()
                 .join(",\n");
-            format!("local {fname} = {{\n", fname = "out")
+            format!("local {fname} = {{\n", fname = module_name)
                 + &lua_string
-                + &format!("\n}}\n\nreturn {fname}\n", fname = "out")
+                + &format!("\n}}\n\nreturn {fname}\n", fname = module_name)
         }
     };
 
@@ -236,9 +252,14 @@ mod tests {
             img: make_rect(w, h),
         }]);
 
-        if let Some(img) = pack(MetaDataFormat::Json, padding as u8, img_collection)?
-            .img
-            .as_rgba8()
+        if let Some(img) = pack(
+            &"out.png",
+            MetaDataFormat::Json,
+            padding as u8,
+            img_collection,
+        )?
+        .img
+        .as_rgba8()
         {
             let p: Vec<&image::Rgba<u8>> = img.pixels().collect();
             let q: Vec<&image::Rgba<u8>> = expected_output_img.pixels().collect();

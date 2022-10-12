@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fmt::format};
 
+#[derive(Clone, Copy)]
 pub enum MetaDataFormat {
     Json,
     Lua,
