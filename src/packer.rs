@@ -202,6 +202,8 @@ fn pack(
         sprite_data.push(sd);
     }
 
+    sprite_data.sort_by(|a, b| a.name.partial_cmp(&b.name).unwrap());
+
     let meta_data = match output_file_format {
         MetaDataFormat::Json => {
             let json_string: String = sprite_data
