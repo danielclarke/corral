@@ -138,13 +138,7 @@ fn load_all(input_dir: &str) -> Result<ImageCollection, Box<dyn Error>> {
 
     for path in paths {
         let path = path?.path();
-        if let (Some(path_str), Some(fname), Some(ext)) =
-            (path.to_str(), path.file_prefix(), path.extension())
-        {
-            if ext != "png" {
-                println!("Not png - skipping {path_str}");
-                continue;
-            }
+        if let (Some(path_str), Some(fname)) = (path.to_str(), path.file_prefix()) {
             match image::io::Reader::open(path_str) {
                 Ok(reader) => match reader.decode() {
                     Ok(img) => {
@@ -153,9 +147,9 @@ fn load_all(input_dir: &str) -> Result<ImageCollection, Box<dyn Error>> {
                             img,
                         });
                     }
-                    Err(err) => {
-                        eprintln!("Error decoding {path_str}");
-                        return Err(Box::new(err));
+                    Err(_) => {
+                        println!("Error decoding {path_str} - skipping");
+                        continue;
                     }
                 },
                 Err(err) => {
